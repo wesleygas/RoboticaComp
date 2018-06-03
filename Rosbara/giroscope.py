@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """This program handles the communication over I2C
 between a Raspberry Pi and a MPU-6050 Gyroscope / Accelerometer combo.
 Made by: MrTijn/Tijndagamer
@@ -6,6 +8,10 @@ Copyright (c) 2015, 2016, 2017 MrTijn/Tijndagamer
 """
 
 import smbus
+import rospy
+from geometry_msgs.msg import Vector3
+from sensor_msgs.msg import Imu
+
 
 class mpu6050:
 
@@ -233,16 +239,24 @@ class mpu6050:
 
         return [accel, gyro, temp]
 
+
+
+
+
 if __name__ == "__main__":
-    while True:
+	pub = rospy.Publisher('imu',Imu,queue_size = 3)
+	rospy.init_node("Imu_data",anonymous=True)
+	rate = rospy.Rate(10) #10hz
+	dados = Imu()
+
+
+	while True:
 		mpu = mpu6050(0x68)
-		print("\n\n ")
-		print("Temperatura: ",mpu.get_temp())
+		#mpu.get_temp()
+		dados.header.stamp = rospy.Time.now()
 		accel_data = mpu.get_accel_data()
-		print("\n\n\ ")
-		print("Acelerometro")
-		print(accel_data['x'],"||",accel_data['y'],"||",accel_data['z'])
-		print("\n\n" )
-		print("Gyroscope Data:")
+		dados.linear_acceleration = Vector3(accel_data['x'],accel_data['y'],accel_data['z'])
 		gyro_data = mpu.get_gyro_data()
-		print(gyro_data['x'],"||",gyro_data['y'],"||",gyro_data['z'],"||")
+		dados.angular_velocity = Vector3(gyro_data['x'],gyro_data['y'],gyro_data['z'])
+		
+		pub.publish(dados)
