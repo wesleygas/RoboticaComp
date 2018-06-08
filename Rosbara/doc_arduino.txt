@@ -3,3 +3,5 @@ a sintaxe do comando deve ser:
 um char + valor inteiro (-27000 < val < 27000) + \n
 
 NãO ESQUECER DO \n pelamordedeus
+
+https://github.com/br3ttb/Arduino-PID-Library/ -- PID library
