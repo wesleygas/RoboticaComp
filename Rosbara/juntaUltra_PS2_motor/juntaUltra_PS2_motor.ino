@@ -1,21 +1,53 @@
-/*
- * an arduino sketch to interface with a ps/2 mouse.
- * Also uses serial protocol to talk back to the host
- * and report what it finds.
- */
+// ---------------------------------------------------------------------------
+// Example NewPing library sketch that pings 3 sensors 20 times a second.
+// ---------------------------------------------------------------------------
 
-/*
- * Pin 5 is the mouse data pin, pin 6 is the clock pin
- * Feel free to use whatever pins are convenient.
- */
+#include <NewPing.h>
+
+#define SONAR_NUM 3     // Number of sensors.
+#define MAX_DISTANCE 200 // Maximum distance (in cm) to ping.
+
 #define MDATA 5
 #define MCLK 6
 
-/*
- * according to some code I saw, these functions will
- * correctly set the mouse clock and data pins for
- * various conditions.
- */
+unsigned long currentMillis = 0;
+unsigned long sonarMillis = 0;
+
+#define RMO1 10
+#define RMO2 7
+#define LMO1 9
+#define LMO2 8
+
+byte LO1 = 0;
+byte LO2 = 0;
+byte RO1 = 0;
+byte RO2 = 0;
+
+byte goal = 40;
+
+String toOut = "";
+int dist = 0;
+
+NewPing sonar[SONAR_NUM] = {   // Sensor object array.
+  NewPing(3, 2, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping. 
+  NewPing(11, 4, MAX_DISTANCE), 
+  NewPing(13, 12, MAX_DISTANCE)
+};
+
+float readUltrass(){
+  toOut = "$:";
+  for (uint8_t i = 0; i < SONAR_NUM; i++) { // Loop through each sensor and display results.   
+    dist = 0;
+    dist = sonar[i].ping_cm();
+    delay(40);
+    toOut += String(dist);
+    toOut += ',';
+  }
+  toOut += 'w';
+  Serial.println(toOut);
+  
+}
+
 void gohi(int pin)
 {
   pinMode(pin, INPUT);
@@ -155,35 +187,51 @@ void mouse_init()
   delayMicroseconds(100);
 }
 
-void setup()
-{
-  Serial.begin(9600);
+
+void setup() {
+  Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
+  pinMode(RMO1,OUTPUT);
+  pinMode(LMO1,OUTPUT);
   mouse_init();
+  
 }
 
-/*
- * get a reading from the mouse and report it back to the
- * host via the serial line.
- */
-void loop()
-{
+void loop() { 
+  currentMillis = millis();
+    if(currentMillis - sonarMillis > 300){
+      sonarMillis = currentMillis;
+      readUltrass();
+    }
+  
   char mstat;
-  char mx;
-  char my;
+  int mx;
+  int my;
 
   /* get a reading from the mouse */
   mouse_write(0xeb);  /* give me data! */
   mouse_read();      /* ignore ack */
   mstat = mouse_read();
   mx = mouse_read();
-  my = mouse_read();
+  my = - mouse_read();
 
+  if(goal < my && LO2 < 255){
+    LO2++;
+  }
+  else if(LO2 > 0){
+    LO1 = LO1 - 1;
+  }
+
+  analogWrite(LMO1,LO1);
+  
+  
   /* send the data back up */
-  Serial.print(mstat, BIN);
-  Serial.print("\tX=");
-  Serial.print(mx, DEC);
-  Serial.print("\tY=");
-  Serial.print(my, DEC);
-  Serial.println();
-  delay(20);  /* twiddle */
+  Serial.print("%:");
+  Serial.print(mx);
+  Serial.print(",");
+  Serial.print(my);
+  Serial.println(",w");
+  delay(10);  /* twiddle */
+ 
 }
+
+
