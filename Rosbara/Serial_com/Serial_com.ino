@@ -1,13 +1,10 @@
 //Codigo para receber valores inteiros pela serial junto com alguma label 
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
 
-
-LiquidCrystal_I2C lcd(0x26, 16, 2); //Common address be 0x27, but I got A0 pulled  down so it becomes 0x26
 
 char cmd[40]; //Inicia um array de caracteres onde vamos guardar os comandos recebidos pela serial
 int cmdIndex; //Placeholder para a index que vamos ler dos comandos
-
+String serialOut = "";
 int linearVel = 0;
 int angularVel = 0;
 
@@ -34,24 +31,20 @@ void exeCmd(){
     
     if(cmd[0] == 'L'){
       linearVel = val;
-      lcd.home();
-      lcd.print("                ");
-      lcd.home();
-      lcd.print("L: ");
-      lcd.print(linearVel);
+
+      
     }
     else{ //Se nao eh L e entrou no if, é A
       angularVel = val;
-      lcd.setCursor(0,1); //setCursor(coluna,linha);
-      lcd.print("                ");
-      lcd.setCursor(0,1);
-      lcd.print("A: ");
-      lcd.print(angularVel);
+      
       
     }
-   Serial.println(cmd);
-   Serial.println(linearVel);
-   Serial.println(angularVel);
+   serialOut = "U:";
+   serialOut += String(linearVel)+ ",";
+   serialOut += String(angularVel) + ",";
+   serialOut += String(linearVel+angularVel) + ",";
+   serialOut += "\n";
+   Serial.print(serialOut);
    
   }
 }
@@ -61,7 +54,7 @@ void receiveCmd(){
   if(Serial.available()){
     char c = (char)Serial.read();
     if(c == '\n'){ 
-      cmd[cmdIndex] = 0;
+      cmd[cmdIndex] = 0; //Adiciona o tail (byte null)
       exeCmd();
       cmdIndex = 0;
     }
@@ -73,12 +66,7 @@ void receiveCmd(){
 }
 
 void setup() {
-  Serial.begin(115200);
-  lcd.begin();
-  lcd.backlight();
-  lcd.print("Starting");
-  delay(1000);
-  lcd.clear();
+
   cmdIndex = 0; //A cada inicio volta o cmdIndex para 0
   
 

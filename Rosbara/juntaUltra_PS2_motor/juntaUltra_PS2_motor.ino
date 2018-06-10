@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 #include <NewPing.h>
+#include <Wire.h>
 
 #define SONAR_NUM 3     // Number of sensors.
 #define MAX_DISTANCE 200 // Maximum distance (in cm) to ping.
@@ -34,17 +35,19 @@ NewPing sonar[SONAR_NUM] = {   // Sensor object array.
   NewPing(13, 12, MAX_DISTANCE)
 };
 
-float readUltrass(){
-  toOut = "$:";
-  for (uint8_t i = 0; i < SONAR_NUM; i++) { // Loop through each sensor and display results.   
+float postUltrass(){
+  toOut = "U:";
+  for (uint8_t i = 0; i < SONAR_NUM; i++) { // Loop through each sensor and post results.   
     dist = 0;
     dist = sonar[i].ping_cm();
     delay(40);
-    toOut += String(dist);
-    toOut += ',';
+    if(dist != 0){
+      toOut += String(dist)+ ",";
+    }
   }
-  toOut += 'w';
-  Serial.println(toOut);
+  toOut += "\n";
+  Serial.print(toOut);
+
   
 }
 
@@ -188,11 +191,71 @@ void mouse_init()
 }
 
 
+char cmd[40]; //Inicia um array de caracteres onde vamos guardar os comandos recebidos pela serial
+int cmdIndex; //Placeholder para a index que vamos ler dos comandos
+String serialOut = "";
+int linearVel = 0;
+int angularVel = 0;
+
+bool negative = false;
+
+void exeCmd(){
+  //Podemos usar o metodo strcmp(cmd,"str"), que retorna 0  se as duas strings forem iguais, mas isso é muito lerdo
+  if((cmd[0] == 'L' || cmd[0] == 'A') && cmd[1] == ' '){ //Se o comando tiver inicio com L(linear) ou A(angular)
+    
+    int val = 0; //Iniciando o parsing do comando
+    for(int i = 2; cmd[i] != 0; i++){ //O for irá rodar até encontrar o valor 0(null) que colocaremos na hora do recebimento
+      if(cmd[i] == '-'){ //Se o valor for negativo, levanta a flag e pula o sinal
+        negative = true;
+        i++;
+      }
+      val = val*10 + (cmd[i] - '0'); //para cada rodada, atualizamos qual casa decimal estamos escrevendo
+      //a subtracao por zero e pra pegar o valor inteiro do caractere (o zero eh 48 e assim vai ate o 9 = 57
+    
+    }
+    if(negative){ //Se a flag estiver ativa, inverte o valor final e abaixa a flag
+      val = -val;
+      negative = false;    
+    }
+    
+    if(cmd[0] == 'L'){
+      linearVel = val;
+
+      
+    }
+    else{ //Se nao eh L e entrou no if, é A
+      angularVel = val;
+      
+      
+    }   
+  }
+}
+
+//Os comandos seguirao a sintaxe "(char)TYPE (VALUE
+void receiveCmd(){
+  if(Serial.available()){
+    char c = (char)Serial.read();
+    if(c == '\n'){ 
+      cmd[cmdIndex] = 0; //Adiciona o tail (byte null)
+      exeCmd();
+      cmdIndex = 0;
+    }
+    else{
+      cmd[cmdIndex] = c;
+      if(cmdIndex < 39) cmdIndex++;
+    }
+  }
+}
+
+
 void setup() {
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
   pinMode(RMO1,OUTPUT);
+  pinMode(RMO2,OUTPUT);
   pinMode(LMO1,OUTPUT);
+  pinMode(LMO2,OUTPUT);
   mouse_init();
+  cmdIndex = 0;
   
 }
 
@@ -200,9 +263,9 @@ void loop() {
   currentMillis = millis();
     if(currentMillis - sonarMillis > 300){
       sonarMillis = currentMillis;
-      readUltrass();
+      postUltrass();
     }
-  
+  receiveCmd();
   char mstat;
   int mx;
   int my;
@@ -214,23 +277,8 @@ void loop() {
   mx = mouse_read();
   my = - mouse_read();
 
-  if(goal < my && LO2 < 255){
-    LO2++;
-  }
-  else if(LO2 > 0){
-    LO1 = LO1 - 1;
-  }
+  
 
-  analogWrite(LMO1,LO1);
-  
-  
-  /* send the data back up */
-  Serial.print("%:");
-  Serial.print(mx);
-  Serial.print(",");
-  Serial.print(my);
-  Serial.println(",w");
-  delay(10);  /* twiddle */
  
 }
 
