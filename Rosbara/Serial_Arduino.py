@@ -1,8 +1,9 @@
 import serial
 import time
+import numpy as np
 #import struct
 
-ser = serial.Serial('COM8',115200 , timeout = 0.1) # ttyACM1 for Arduino board
+ser = serial.Serial('COM12',115200 , timeout = 0.1) # ttyACM1 for Arduino board
 readings = []
 command = ""
 time.sleep(3)
@@ -12,6 +13,7 @@ def send_vel(linear, angular):
 
 def handle_input():
     global command
+    global readings
     if (ser.in_waiting):
         data = str(ser.read()) #Le byte por byte
         if(data == "\n"): #Se instrucao acabou, parse it
@@ -29,12 +31,9 @@ def handle_input():
 
 print('galera')
 
-for i in range(10):
-        time.sleep(0.1)
+while(True):
+    for i in range(4):
         handle_input()
-        print('Bora comecar!')
-        send_vel(i,2*i)
-        print(readings)
-while(ser.in_waiting):
-    handle_input()
-    print(readings)
+    if(len(readings)>0):
+        print(readings[-1])
+    time.sleep(0.1)
